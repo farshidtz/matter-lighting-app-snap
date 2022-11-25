@@ -19,7 +19,11 @@ assumes: [snapd2.46]
 apps:
   chip-lighting-app:
     daemon: simple
-    command: bin/chip-lighting-app
+    command: bin/chip-lighting-app --wifi
+    environment:
+      LD_LIBRARY_PATH: /usr/local/lib
+    install-mode: disable
+    restart-delay: 3s
     plugs: [network, network-bind]
 
 parts:
@@ -28,16 +32,19 @@ parts:
     source-branch: master
     source-depth: 1
     override-build: |
-      cd wiringpi
+      cd $SNAPCRAFT_PART_SRC
       sudo ./build
     plugin: nil
     build-packages: [git, gcc, g++]
 
   chip-lighting-app:
-    source: https://github.com/MonicaisHer/connectedhomeip.git
-    source-branch: "lighting-app-rpi-gpio"
+    source: https://github.com/farshidtz/connectedhomeip.git
+    source-branch: wiringpi-lib
     source-depth: 1
     override-build: |
+      cd $SNAPCRAFT_PART_SRC 
+
+      set +u
       git submodule update --init	
 
       # Remove unused large submodules
@@ -57,8 +64,10 @@ parts:
       
       cd examples/lighting-app/linux/
       gn gen out/build
-      sed -i '18s/$/ -lwiringPi/' ./examples/lighting-app/linux/out/build/obj/chip-lighting-app.ninja
       ninja -C out/build
+      set -u
+
+      cp ./out/build/chip-lighting-app $SNAPCRAFT_PART_INSTALL        
     build-packages: [git, gcc, g++, pkg-config, libssl-dev, libdbus-1-dev, libglib2.0-dev, libavahi-client-dev, ninja-build, python3-venv, python3-dev, python3-pip, unzip, libgirepository1.0-dev, libcairo2-dev, libreadline-dev]
     organize:
       chip-lighting-app: bin/chip-lighting-app
